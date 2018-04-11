@@ -207,9 +207,7 @@ private[spark] trait KafkaSparkTool {
     kp: Map[String, String],
     retries: Int,
     currentOffsets: Map[TopicAndPartition, Long]): Map[TopicAndPartition, LeaderOffset] = {
-    if (kc == null) {
-      kc = new KafkaCluster(kp)
-    }
+    instance(kp)
     val o = kc.getLatestLeaderOffsets(currentOffsets.keySet)
     // Either.fold would confuse @tailrec, do it manually
     if (o.isLeft) {
