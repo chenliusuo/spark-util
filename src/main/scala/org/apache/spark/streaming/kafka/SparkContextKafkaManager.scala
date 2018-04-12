@@ -39,7 +39,6 @@ private[spark] object SparkContextKafkaManager
     messageHandler: MessageAndMetadata[K, V] => R = msgHandle) = {
     if (kp == null || !kp.contains(GROUP_ID))
       throw new SparkException(s"kafkaParam is Null or ${GROUP_ID} is not setted")
-    instance(kp)
     val groupId = kp.get(GROUP_ID).get
     val consumerOffsets: Map[TopicAndPartition, Long] =
       if (fromOffset == null) {
@@ -57,7 +56,7 @@ private[spark] object SparkContextKafkaManager
     //consumerOffsets.foreach(x=>log.info(x.toString))
     val maxMessagesPerPartition = if (kp.contains(maxMessagesPerPartitionKEY)) kp.get(maxMessagesPerPartitionKEY).get.toInt
                                   else sc.getConf.getInt(maxMessagesPerPartitionKEY, 0) //0表示没限制
-    val untilOffsets = clamp(latestLeaderOffsets(consumerOffsets), consumerOffsets, maxMessagesPerPartition)
+    val untilOffsets = clamp(latestLeaderOffsets(kp,0,consumerOffsets), consumerOffsets, maxMessagesPerPartition)
 
     val kd = KafkaRDD[K, V, KD, VD, R](
       sc,
@@ -102,7 +101,7 @@ private[spark] object SparkContextKafkaManager
           case _          => log.info(s"""${KAFKA_CONSUMER_FROM} must LAST or CONSUM,defualt is LAST"""); getLatestOffsets(topics, kp)
         }
       } else fromOffset
-    val untilOffsets = clamp(latestLeaderOffsets(consumerOffsets), consumerOffsets, maxMessagesPerPartition)
+    val untilOffsets = clamp(latestLeaderOffsets(kp,0,consumerOffsets), consumerOffsets, maxMessagesPerPartition)
 
     val kd = KafkaRDD[K, V, KD, VD, R](
       sc,
@@ -133,21 +132,6 @@ private[spark] object SparkContextKafkaManager
   }
   /**
    * @author LMQ
-   * @description 获取最新的数据偏移量
-   * @description 这个方法主要是spark在用，所以就不写进kafkatool的类里面了
-   */
-  def latestLeaderOffsets(
-      consumerOffsets: Map[TopicAndPartition, Long]
-      ): Map[TopicAndPartition, LeaderOffset] = {
-    val o = kc.getLatestLeaderOffsets(consumerOffsets.keySet)
-    if (o.isLeft) {
-      throw new SparkException(o.left.toString)
-    } else {
-      o.right.get
-    }
-  }
-  /**
-   * @author LMQ
    * @description 计算读取kafka的数据到哪返回一个Map[TopicAndPartition, LeaderOffset]
    * 							代表每个topic.partition->offset
    * @description 由maxMessagesPerPartition限制最多读取多少数据
@@ -158,7 +142,6 @@ private[spark] object SparkContextKafkaManager
     if (maxMessagesPerPartition > 0) {
       leaderOffsets.map {
         case (tp, lo) =>
-          //println("SparkContextKafkaManager : ",tp,currentOffsets(tp) + maxMessagesPerPartition,lo.offset)
           tp -> lo.copy(offset = Math.min(currentOffsets(tp) + maxMessagesPerPartition, lo.offset))
       }
     } else leaderOffsets

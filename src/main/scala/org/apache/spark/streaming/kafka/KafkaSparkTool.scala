@@ -206,10 +206,10 @@ private[spark] trait KafkaSparkTool {
   def latestLeaderOffsets(
     kp: Map[String, String],
     retries: Int,
-    currentOffsets: Map[TopicAndPartition, Long]): Map[TopicAndPartition, LeaderOffset] = {
+    currentOffsets: Map[TopicAndPartition, Long]
+    ): Map[TopicAndPartition, LeaderOffset] = {
     instance(kp)
     val o = kc.getLatestLeaderOffsets(currentOffsets.keySet)
-    // Either.fold would confuse @tailrec, do it manually
     if (o.isLeft) {
       val err = o.left.get.toString
       if (retries <= 0) {
