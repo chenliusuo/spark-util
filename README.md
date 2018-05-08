@@ -2,7 +2,7 @@
 
 **scala version 2.10** <br/>
 **spark version 1.6.0** <br/>
-**kafka version 0.9** <br/>
+**kafka version 0.8.0.2** <br/>
 
 
 * 提供 对外的 ssc创建 createDirectStream 的方法 ，用来读取kafka的数据。
